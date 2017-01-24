@@ -29,7 +29,7 @@ defmodule DistributedTest.Mixfile do
   defp package do
     [
      name: :distributed_test,
-     files: ["lib", "priv", "mix.exs", "README*", "LICENSE*"],
+     files: ["lib", "mix.exs", "README*", "LICENSE*"],
      maintainers: ["Sam Schneider"],
      licenses: ["MIT"],
      links: %{"GitHub" => "https://github.com/sschneider1207/distributed_test"}]
