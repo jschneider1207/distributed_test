@@ -9,7 +9,8 @@ Use the default number of nodes (1 master + 4 slaves)
 mix test.distributed
 ```
 
-Use a specific number of nodes (1 master + n slaves)
+Use a specific number of nodes (1 master + n slaves).  Node the master is
+not included in the count.
 ```
 mix test.distributed --count 7
 ```
