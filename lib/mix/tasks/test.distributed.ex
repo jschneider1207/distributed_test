@@ -11,7 +11,6 @@ defmodule Mix.Tasks.Test.Distributed do
   use Mix.Task
   @default_count 4
 
-  @doc false
   def run(params) do
     unless System.get_env("MIX_ENV") || Mix.env == :test do
       Mix.raise "\"mix test.distributed\" is running on environment \"#{Mix.env}\". If you are " <>
