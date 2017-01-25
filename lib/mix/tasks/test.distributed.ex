@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Test.Distributed do
   end
 
   defp remove_count(params, acc \\ [])
-  defp remove_count([], acc), do: acc
+  defp remove_count([], acc), do: :lists.reverse(acc)
   defp remove_count(["--count"|[_num|rem]], acc), do: :lists.reverse(acc) ++ rem
   defp remove_count([head|rem], acc), do: remove_count(rem, [head|acc])
 end
