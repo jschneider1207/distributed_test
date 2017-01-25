@@ -9,10 +9,14 @@ defmodule Mix.Tasks.Test.Distributed do
   for the `mix test` task will be passed along to it.
   """
   use Mix.Task
+
+  @shortdoc "Runs a project's tests in a distributed environment"
+  @recursive true
+  @preferred_cli_env :test
+
   @default_count 4
 
   def run(params) do
-    IO.inspect params
     unless System.get_env("MIX_ENV") || Mix.env == :test do
       Mix.raise "\"mix test.distributed\" is running on environment \"#{Mix.env}\". If you are " <>
                                 "running tests along another task, please set MIX_ENV explicitly"
