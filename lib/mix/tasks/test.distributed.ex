@@ -35,6 +35,7 @@ defmodule Mix.Tasks.Test.Distributed do
       false -> params
     end
     Mix.Tasks.Test.run(params)
+    
     DistributedEnv.stop()
   end
 
