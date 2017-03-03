@@ -16,6 +16,7 @@ defmodule Mix.Tasks.Run.Distributed do
   @default_count 4
 
   def run(params) do
+    
     app = Mix.Project.config[:app]
 
     {switches, _, _} = OptionParser.parse(params, [switches: [count: :integer]])
@@ -23,16 +24,22 @@ defmodule Mix.Tasks.Run.Distributed do
       true -> remove_count(params)
       false -> params
     end
+
     Mix.Tasks.Run.run(["--no-start"|params])
 
-    Application.ensure_started(:distributed_test)
+    #Application.ensure_started(:distributed_test)
     Keyword.get(switches, :count, @default_count)
     |> DistributedEnv.start()
 
     config_path = Mix.Project.config[:config_path]
-    :rpc.eval_everywhere(Node.list(), Mix.Config, :read!, [config_path])
+    :rpc.multicall(Node.list(), Mix.Tasks.Run.Distributed, :load_config, [config_path])
 
     :rpc.eval_everywhere(Application, :ensure_all_started, [app])
+  end
+
+  def load_config(path) do
+    for {app, config} <- Mix.Config.read!(path),
+        do: Enum.each(config, fn {k, v} -> Application.put_env(app, k, v) end)
   end
 
   defp remove_count(params, acc \\ [])
