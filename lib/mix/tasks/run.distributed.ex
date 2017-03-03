@@ -17,16 +17,22 @@ defmodule Mix.Tasks.Run.Distributed do
 
   def run(params) do
     app = Mix.Project.config[:app]
-    Application.ensure_started(:distributed_test)
+
     {switches, _, _} = OptionParser.parse(params, [switches: [count: :integer]])
     params = case Keyword.has_key?(switches, :count) do
       true -> remove_count(params)
       false -> params
     end
     Mix.Tasks.Run.run(["--no-start"|params])
+
+    Application.ensure_started(:distributed_test)
     Keyword.get(switches, :count, @default_count)
     |> DistributedEnv.start()
+
     :rpc.eval_everywhere(Application, :ensure_all_started, [app])
+
+    config_path = Mix.Project.config[:config_path]
+    :rpc.eval_everywhere(Node.list, Mix.Config, :read!, [config_path])
   end
 
   defp remove_count(params, acc \\ [])
