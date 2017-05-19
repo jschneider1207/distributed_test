@@ -1,37 +1,54 @@
 defmodule DistributedEnv do
   @moduledoc false
 
-  def start(num_nodes) do
-    spawn_master()
-    num_nodes
-    |> spawn_slaves()
+  use GenServer
+
+  @timeout 30_000
+
+  @primary "primary"
+  @slave "slave"
+  @host "127.0.0.1"
+
+  def start_link(count, app \\ nil) do
+    GenServer.start_link(__MODULE__, [count: count, app: app], name: __MODULE__)
   end
 
-  def stop() do
-    Node.list()
-    |> Enum.map(&:slave.stop/1)
+  def stop(), do: GenServer.stop(__MODULE__)
+
+  def init(count: count, app: app) do
+    spawn_master()
+    spawn_slaves(count, app)
+    {:ok, app} # FIXME
+  end
+
+  def terminate(_reason, _state) do
+    Enum.map(Node.list(), &:slave.stop/1)
     :net_kernel.stop()
   end
 
+  ##############################################################################
+
   defp spawn_master() do
-    :net_kernel.start([:"primary@127.0.0.1"])
+    :net_kernel.start([:"#{@primary}@127.0.0.1"])
     :erl_boot_server.start([])
-    allow_boot(~c"127.0.0.1")
+    allow_boot(~c"#{@host}")
   end
 
-  defp spawn_slaves(num_nodes) do
-    1..num_nodes
-    |> Enum.map(fn index -> ~c"slave#{index}@127.0.0.1" end)
-    |> Enum.map(&Task.async(fn -> spawn_slave(&1) end))
-    |> Enum.map(&Task.await(&1, 30_000))
+  defp spawn_slaves(count, app) do
+    1..count
+    |> Stream.map(fn index -> ~c"#{@slave}#{index}@#{@host}" end)
+    |> Stream.map(&Task.async(fn -> spawn_slave(&1, app) end))
+    |> Stream.map(&Task.await(&1, @timeout))
+    |> Enum.to_list
   end
 
-  defp spawn_slave(node_host) do
-    {:ok, node} = :slave.start(~c"127.0.0.1", node_name(node_host), inet_loader_args())
-    add_code_paths(node)
-    transfer_configuration(node)
-    ensure_applications_started(node)
-    {:ok, node}
+  defp spawn_slave(node_host, app) do
+    with {:ok, node} <- :slave.start(~c"#{@host}", node_name(node_host), inet_loader_args()) do
+      add_code_paths(node)
+      transfer_configuration(node)
+      ensure_applications_started(node, app)
+      {:ok, node}
+    end
   end
 
   defp rpc(node, module, function, args) do
@@ -39,12 +56,12 @@ defmodule DistributedEnv do
   end
 
   defp inet_loader_args do
-    ~c"-loader inet -hosts 127.0.0.1 -setcookie #{:erlang.get_cookie()}"
+    ~c"-loader inet -hosts #{@host} -setcookie #{:erlang.get_cookie()}"
   end
 
   defp allow_boot(host) do
-    {:ok, ipv4} = :inet.parse_ipv4_address(host)
-    :erl_boot_server.add_slave(ipv4)
+    with {:ok, ipv4} <- :inet.parse_ipv4_address(host),
+      do: :erl_boot_server.add_slave(ipv4)
   end
 
   defp add_code_paths(node) do
@@ -59,7 +76,7 @@ defmodule DistributedEnv do
     end
   end
 
-  defp ensure_applications_started(node) do
+  defp ensure_applications_started(node, _app) do
     rpc(node, Application, :ensure_all_started, [:mix])
     rpc(node, Mix, :env, [Mix.env()])
     for {app_name, _, _} <- Application.loaded_applications do

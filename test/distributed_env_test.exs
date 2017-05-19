@@ -4,7 +4,7 @@ defmodule DistributedEnvTest do
   test "nodes are stopped and started at will" do
     count = 6
 
-    DistributedEnv.start(count)
+    DistributedEnv.start_link(count)
     assert length(Node.list()) === count
 
     DistributedEnv.stop()

@@ -18,24 +18,27 @@ defmodule Mix.Tasks.Test.Distributed do
 
   def run(params) do
     unless System.get_env("MIX_ENV") || Mix.env == :test do
-      Mix.raise "\"mix test.distributed\" is running on environment \"#{Mix.env}\". If you are " <>
-                                "running tests along another task, please set MIX_ENV explicitly"
+      IO.puts "⚑ “mix test.distributed” is running on environment “#{Mix.env}”.\n" <>
+              "⚐   “mix test.distributed” is to be run on :test.\n" <>
+              "⚐   Resetting the environment to :test for you."
+      Mix.env(:test)
     end
 
     {switches, _, _} = OptionParser.parse(params, [switches: [count: :integer]])
 
     app = Mix.Project.config[:app]
+    Mix.Tasks.Loadpaths.run([])
     Application.ensure_started(app)
 
-    Keyword.get(switches, :count, @default_count)
-    |> DistributedEnv.start()
+    count = Keyword.get(switches, :count, @default_count)
+    DistributedEnv.start_link(count, app)
 
     params = case Keyword.has_key?(switches, :count) do
       true -> remove_count(params)
       false -> params
     end
     Mix.Tasks.Test.run(params)
-    
+
     DistributedEnv.stop()
   end
 
